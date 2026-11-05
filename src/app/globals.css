@@ -331,7 +331,14 @@ canvas {
   line-height: 1;
   text-shadow: 0 0.08cqw 0.18cqw #000;
   writing-mode: vertical-rl;
+  white-space: nowrap;
+  flex-wrap: nowrap;
   transform: translateY(-50%) rotate(180deg);
+}
+
+.stamp-vertical > span {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .stamp-vertical .stamp-id {
