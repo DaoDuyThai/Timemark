@@ -102,6 +102,7 @@ export function StampApp() {
   const [hydrated, setHydrated] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rectRef = useRef<StampRect | null>(null);
+  const closingEditorRef = useRef(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const dataRef = useRef(data);
@@ -235,6 +236,11 @@ export function StampApp() {
 
   useEffect(() => {
     const onBack = () => {
+      if (closingEditorRef.current) {
+        closingEditorRef.current = false;
+        setOpen(false);
+        return;
+      }
       if (open) {
         setOpen(false);
       } else if (img) {
@@ -318,6 +324,7 @@ export function StampApp() {
 
   function closeEditor() {
     const shouldGoBack = window.history.state?.timemarkLayer === "editor";
+    if (shouldGoBack) closingEditorRef.current = true;
     setOpen(false);
     if (shouldGoBack) window.history.back();
   }

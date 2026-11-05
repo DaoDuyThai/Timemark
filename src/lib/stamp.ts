@@ -118,11 +118,11 @@ export function drawStamp(
   const right = 28 * s;
   const bottom = 28 * s;
   const contentW = w - left - right;
-  const timeSize = 120 * s;
-  const dateSize = 34 * s;
-  const addressSize = 35 * s;
-  const noteSize = 35 * s;
-  const logoSize = 38 * s;
+  const timeSize = 144 * s;
+  const dateSize = 40 * s;
+  const addressSize = 43 * s;
+  const noteSize = 42 * s;
+  const logoSize = 42 * s;
   const { time, date: dateStr, weekday } = formatParts(date);
 
   ctx.save();
@@ -135,12 +135,12 @@ export function drawStamp(
   ctx.font = `400 ${addressSize}px ${f}`;
   const addressLines = wrap(ctx, data.address.trim(), Math.min(contentW - 18 * s, 720 * s));
   const visibleAddressLines = addressLines.slice(0, 3);
-  const addressLineH = 43 * s;
-  const cardH = 84 * s;
+  const addressLineH = 51 * s;
+  const cardH = 92 * s;
   let cardY = h - bottom - cardH;
   const addressLastBaseline = cardY - 34 * s;
   const addressFirstBaseline = addressLastBaseline - Math.max(0, visibleAddressLines.length - 1) * addressLineH;
-  let top = addressFirstBaseline - 188 * s;
+  let top = addressFirstBaseline - 212 * s;
 
   if (data.position === "top") {
     const shift = 54 * s - top;
@@ -152,19 +152,19 @@ export function drawStamp(
   ctx.fillStyle = "#ffffff";
   ctx.strokeStyle = "rgba(0,0,0,.25)";
   ctx.lineWidth = 1.5 * s;
-  ctx.font = `500 ${timeSize}px ${f}`;
-  const timeStretch = 0.76;
+  ctx.font = `400 ${timeSize}px ${f}`;
+  const timeStretch = 0.69;
   ctx.save();
   ctx.translate(left, 0);
   ctx.scale(timeStretch, 1);
-  ctx.fillText(time, 0, top + 110 * s);
+  ctx.fillText(time, 0, top + 134 * s);
   ctx.restore();
 
   const timeW = ctx.measureText(time).width * timeStretch;
   const dividerX = left + timeW + 18 * s;
   ctx.shadowColor = "rgba(0,0,0,.35)";
   ctx.fillStyle = data.accent;
-  ctx.fillRect(dividerX, top + 7 * s, 5 * s, 116 * s);
+  ctx.fillRect(dividerX, top + 7 * s, 5 * s, 132 * s);
 
   ctx.fillStyle = "#ffffff";
   ctx.font = `400 ${dateSize}px ${f}`;
@@ -182,7 +182,12 @@ export function drawStamp(
 
   // Một dòng ghi chú và logo cùng nằm trong thẻ bán trong suốt.
   ctx.shadowColor = "transparent";
-  ctx.fillStyle = "rgba(142,145,143,.48)";
+  const cardGradient = ctx.createLinearGradient(left - 2 * s, 0, w - right, 0);
+  cardGradient.addColorStop(0, "rgba(142,145,143,.52)");
+  cardGradient.addColorStop(0.58, "rgba(142,145,143,.46)");
+  cardGradient.addColorStop(0.82, "rgba(142,145,143,.16)");
+  cardGradient.addColorStop(1, "rgba(142,145,143,0)");
+  ctx.fillStyle = cardGradient;
   roundRect(ctx, left - 2 * s, cardY, contentW + 4 * s, cardH, 9 * s);
   ctx.fill();
 
@@ -195,18 +200,18 @@ export function drawStamp(
   ctx.fillText("Time", w - right - ctx.measureText("mark").width, brandY);
   ctx.fillStyle = "#ffffff";
   ctx.fillText("mark", w - right, brandY);
-  ctx.font = `300 ${19 * s}px ${f}`;
+  ctx.font = `400 ${20 * s}px ${f}`;
   ctx.fillStyle = "rgba(255,255,255,.92)";
-  ctx.fillText("Auto generated", w - right, brandY + 22 * s);
+  ctx.fillText("Timemark Verified", w - right, brandY + 24 * s);
 
-  const brandW = 220 * s;
+  const brandW = 244 * s;
   const note = data.note.trim() || (data.name.trim() ? `Họ tên: ${data.name.trim()}` : "Ghi chú");
   const noteMaxW = Math.max(120 * s, contentW - brandW - 52 * s);
   const fittedNoteSize = fitFontSize(ctx, note, noteMaxW, noteSize, 21 * s, f);
   ctx.textAlign = "left";
   ctx.font = `400 ${fittedNoteSize}px ${f}`;
   ctx.fillStyle = "#ffffff";
-  ctx.fillText(note, left + 14 * s, cardY + cardH / 2 + fittedNoteSize * 0.34);
+  ctx.fillText(note, left + 20 * s, cardY + cardH / 2 + fittedNoteSize * 0.34);
 
   // Mã ảnh dọc ở mép phải.
   const code = data.imageId || `TM${date.getTime().toString(36).toUpperCase()}`;
@@ -216,7 +221,7 @@ export function drawStamp(
   ctx.font = `400 ${16 * s}px ${f}`;
   ctx.textAlign = "center";
   ctx.fillStyle = "rgba(255,255,255,.96)";
-  ctx.fillText(`${code}   Timemark · Auto generated`, 0, 0);
+  ctx.fillText(`${code}   Timemark Verified`, 0, 0);
   ctx.restore();
   ctx.restore();
 
