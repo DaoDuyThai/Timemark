@@ -120,7 +120,7 @@ export function drawStamp(
   const dateSize = 34 * s;
   const addressSize = 35 * s;
   const noteSize = 35 * s;
-  const logoSize = 32 * s;
+  const logoSize = 38 * s;
   const { time, date: dateStr, weekday } = formatParts(date);
 
   ctx.save();
@@ -131,7 +131,7 @@ export function drawStamp(
   ctx.shadowOffsetY = 2 * s;
 
   ctx.font = `400 ${addressSize}px ${f}`;
-  const addressLines = wrap(ctx, data.address.trim(), Math.min(contentW - 18 * s, 940 * s));
+  const addressLines = wrap(ctx, data.address.trim(), Math.min(contentW - 18 * s, 720 * s));
   const visibleAddressLines = addressLines.slice(0, 3);
   const addressLineH = 43 * s;
   const cardH = 84 * s;
@@ -151,9 +151,14 @@ export function drawStamp(
   ctx.strokeStyle = "rgba(0,0,0,.25)";
   ctx.lineWidth = 1.5 * s;
   ctx.font = `400 ${timeSize}px ${f}`;
-  ctx.fillText(time, left, top + 104 * s);
+  const timeStretch = 0.84;
+  ctx.save();
+  ctx.translate(left, 0);
+  ctx.scale(timeStretch, 1);
+  ctx.fillText(time, 0, top + 104 * s);
+  ctx.restore();
 
-  const timeW = ctx.measureText(time).width;
+  const timeW = ctx.measureText(time).width * timeStretch;
   const dividerX = left + timeW + 18 * s;
   ctx.shadowColor = "rgba(0,0,0,.35)";
   ctx.fillStyle = data.accent;
@@ -188,11 +193,11 @@ export function drawStamp(
   ctx.fillText("Time", w - right - ctx.measureText("mark").width, brandY);
   ctx.fillStyle = "#ffffff";
   ctx.fillText("mark", w - right, brandY);
-  ctx.font = `300 ${17 * s}px ${f}`;
+  ctx.font = `300 ${19 * s}px ${f}`;
   ctx.fillStyle = "rgba(255,255,255,.92)";
   ctx.fillText("Auto generated", w - right, brandY + 22 * s);
 
-  const brandW = 176 * s;
+  const brandW = 220 * s;
   const note = data.note.trim() || (data.name.trim() ? `Họ tên: ${data.name.trim()}` : "Ghi chú");
   const noteMaxW = Math.max(120 * s, contentW - brandW - 52 * s);
   const fittedNoteSize = fitFontSize(ctx, note, noteMaxW, noteSize, 21 * s, f);
@@ -204,7 +209,7 @@ export function drawStamp(
   // Mã ảnh dọc ở mép phải.
   const code = data.imageId || `TM${date.getTime().toString(36).toUpperCase()}`;
   ctx.save();
-  ctx.translate(w - 12 * s, top + (cardY - top) * 0.48);
+  ctx.translate(w - 22 * s, h * 0.44);
   ctx.rotate(-Math.PI / 2);
   ctx.font = `400 ${16 * s}px ${f}`;
   ctx.textAlign = "center";

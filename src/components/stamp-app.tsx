@@ -45,6 +45,43 @@ import {
 import { loadCurrent, loadPresets, saveCurrent, savePresets, type Preset } from "@/lib/storage";
 
 const MAX_SIDE = 2560;
+const PORTRAIT_ASPECT = 3 / 4;
+
+function portraitOutputSize(sourceWidth: number, sourceHeight: number) {
+  const sourceAspect = sourceWidth / sourceHeight;
+  const cropWidth = sourceAspect > PORTRAIT_ASPECT ? sourceHeight * PORTRAIT_ASPECT : sourceWidth;
+  const cropHeight = sourceAspect > PORTRAIT_ASPECT ? sourceHeight : sourceWidth / PORTRAIT_ASPECT;
+  const scale = Math.min(1, MAX_SIDE / cropHeight);
+  return {
+    width: Math.max(1, Math.round(cropWidth * scale)),
+    height: Math.max(1, Math.round(cropHeight * scale)),
+  };
+}
+
+function drawPortraitCrop(
+  ctx: CanvasRenderingContext2D,
+  source: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+  width: number,
+  height: number,
+) {
+  const sourceAspect = sourceWidth / sourceHeight;
+  let sx = 0;
+  let sy = 0;
+  let cropWidth = sourceWidth;
+  let cropHeight = sourceHeight;
+
+  if (sourceAspect > PORTRAIT_ASPECT) {
+    cropWidth = sourceHeight * PORTRAIT_ASPECT;
+    sx = (sourceWidth - cropWidth) / 2;
+  } else {
+    cropHeight = sourceWidth / PORTRAIT_ASPECT;
+    sy = (sourceHeight - cropHeight) / 2;
+  }
+
+  ctx.drawImage(source, sx, sy, cropWidth, cropHeight, 0, 0, width, height);
+}
 
 export function StampApp() {
   const [data, setData] = useState<StampData>(DEFAULT_STAMP);
@@ -133,7 +170,12 @@ export function StampApp() {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: mode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        video: {
+          facingMode: { ideal: mode },
+          width: { ideal: 1920 },
+          height: { ideal: 2560 },
+          aspectRatio: { ideal: PORTRAIT_ASPECT },
+        },
         audio: false,
       });
       streamRef.current = stream;
@@ -165,15 +207,13 @@ export function StampApp() {
       const c = canvasRef.current;
       const v = videoRef.current;
       if (c && v && v.videoWidth) {
-        const scale = Math.min(1, MAX_SIDE / Math.max(v.videoWidth, v.videoHeight));
-        const w = Math.round(v.videoWidth * scale);
-        const h = Math.round(v.videoHeight * scale);
+        const { width: w, height: h } = portraitOutputSize(v.videoWidth, v.videoHeight);
         if (c.width !== w || c.height !== h) {
           c.width = w;
           c.height = h;
         }
         const ctx = c.getContext("2d")!;
-        ctx.drawImage(v, 0, 0, w, h);
+        drawPortraitCrop(ctx, v, v.videoWidth, v.videoHeight, w, h);
         rectRef.current = drawStamp(ctx, w, h, dataRef.current, resolveDate(dataRef.current));
       }
       raf = requestAnimationFrame(loop);
@@ -185,11 +225,15 @@ export function StampApp() {
   function capture() {
     const v = videoRef.current;
     if (!v || !v.videoWidth) return;
-    const scale = Math.min(1, MAX_SIDE / Math.max(v.videoWidth, v.videoHeight));
+    if (!window.matchMedia("(orientation: portrait)").matches) {
+      toast.error("Vui lòng xoay điện thoại dọc trước khi chụp");
+      return;
+    }
+    const { width, height } = portraitOutputSize(v.videoWidth, v.videoHeight);
     const t = document.createElement("canvas");
-    t.width = Math.round(v.videoWidth * scale);
-    t.height = Math.round(v.videoHeight * scale);
-    t.getContext("2d")!.drawImage(v, 0, 0, t.width, t.height);
+    t.width = width;
+    t.height = height;
+    drawPortraitCrop(t.getContext("2d")!, v, v.videoWidth, v.videoHeight, width, height);
     t.toBlob(
       (b) => {
         if (!b) return;
@@ -221,13 +265,11 @@ export function StampApp() {
   const render = useCallback(() => {
     const c = canvasRef.current;
     if (!c || !img) return;
-    const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
-    const w = Math.round(img.naturalWidth * scale);
-    const h = Math.round(img.naturalHeight * scale);
+    const { width: w, height: h } = portraitOutputSize(img.naturalWidth, img.naturalHeight);
     c.width = w;
     c.height = h;
     const ctx = c.getContext("2d")!;
-    ctx.drawImage(img, 0, 0, w, h);
+    drawPortraitCrop(ctx, img, img.naturalWidth, img.naturalHeight, w, h);
     rectRef.current = drawStamp(ctx, w, h, data, resolveDate(data));
   }, [img, data]);
 
@@ -240,6 +282,11 @@ export function StampApp() {
     const url = URL.createObjectURL(file);
     const im = new Image();
     im.onload = () => {
+      if (im.naturalWidth >= im.naturalHeight) {
+        URL.revokeObjectURL(url);
+        toast.error("Chỉ hỗ trợ ảnh dọc. Vui lòng chọn ảnh khác.");
+        return;
+      }
       setImg(im);
       stopCamera();
       // ngày giờ điền sẵn: nếu chưa có thì lấy thời điểm hiện tại
