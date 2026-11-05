@@ -523,7 +523,7 @@ export function StampApp() {
                 playsInline
                 muted
                 data-html2canvas-ignore
-                className={facing === "user" ? "stamp-photo -scale-x-100" : "stamp-photo"}
+                className="stamp-photo"
               />
               <StampOverlay data={data} date={stampDate} />
             </div>
