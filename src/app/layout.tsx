@@ -14,8 +14,14 @@ export const metadata: Metadata = {
   title: "Timemark",
   description: "Chấm công nội bộ bằng ảnh có dấu ngày giờ và địa điểm.",
   applicationName: "Timemark",
+  icons: {
+    icon: [
+      { url: "/icons/logo.ico", type: "image/x-icon", sizes: "48x48" },
+      { url: "/icons/logo-48.png", type: "image/png", sizes: "48x48" },
+    ],
+    apple: { url: "/icons/logo-180.png", type: "image/png", sizes: "180x180" },
+  },
   appleWebApp: { capable: true, title: "Timemark", statusBarStyle: "black-translucent" },
-  icons: { apple: "/icons/192" },
 };
 
 export const viewport: Viewport = {
