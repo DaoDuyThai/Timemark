@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ArrowLeft,
   BarChart3,
   Camera,
   Clock,
@@ -20,16 +21,17 @@ import {
   Share2,
   ShieldCheck,
   Sparkles,
+  SwitchCamera,
   Trash2,
   Users,
   Video,
-  ZapOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   ACCENTS,
@@ -46,6 +48,7 @@ import { loadCurrent, loadPresets, saveCurrent, savePresets, type Preset } from 
 
 const MAX_SIDE = 2560;
 const PORTRAIT_ASPECT = 3 / 4;
+const REAR_CROP_ZOOM = 1;
 
 function portraitOutputSize(sourceWidth: number, sourceHeight: number) {
   const sourceAspect = sourceWidth / sourceHeight;
@@ -65,6 +68,7 @@ function drawPortraitCrop(
   sourceHeight: number,
   width: number,
   height: number,
+  zoom = 1,
 ) {
   const sourceAspect = sourceWidth / sourceHeight;
   let sx = 0;
@@ -74,11 +78,14 @@ function drawPortraitCrop(
 
   if (sourceAspect > PORTRAIT_ASPECT) {
     cropWidth = sourceHeight * PORTRAIT_ASPECT;
-    sx = (sourceWidth - cropWidth) / 2;
   } else {
     cropHeight = sourceWidth / PORTRAIT_ASPECT;
-    sy = (sourceHeight - cropHeight) / 2;
   }
+
+  cropWidth /= zoom;
+  cropHeight /= zoom;
+  sx = (sourceWidth - cropWidth) / 2;
+  sy = (sourceHeight - cropHeight) / 2;
 
   ctx.drawImage(source, sx, sy, cropWidth, cropHeight, 0, 0, width, height);
 }
@@ -92,9 +99,9 @@ export function StampApp() {
   const [ready, setReady] = useState(false);
   const [nowStr, setNowStr] = useState("");
   const [locating, setLocating] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rectRef = useRef<StampRect | null>(null);
-  const hydrated = useRef(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const dataRef = useRef(data);
@@ -142,19 +149,20 @@ export function StampApp() {
   // nạp dữ liệu đã lưu
   /* eslint-disable react-hooks/set-state-in-effect -- đọc localStorage sau khi hydrate */
   useEffect(() => {
-    setData({ ...loadCurrent(), imageId: createTimemarkId() });
+    const saved = loadCurrent();
+    setData({ ...saved, imageId: createTimemarkId() });
     setPresets(loadPresets());
     setNowStr(toLocalInput(new Date()));
-    hydrated.current = true;
+    setHydrated(true);
     ensureStampFont().then(() => setReady(true));
-    locate();
+    if (!saved.useManualAddress) locate();
   }, [locate]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // tự lưu lần nhập gần nhất
   useEffect(() => {
-    if (hydrated.current) saveCurrent(data);
-  }, [data]);
+    if (hydrated) saveCurrent(data);
+  }, [data, hydrated]);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -178,6 +186,20 @@ export function StampApp() {
         },
         audio: false,
       });
+      const track = stream.getVideoTracks()[0];
+      if (mode === "environment" && track?.getCapabilities) {
+        const capabilities = track.getCapabilities() as MediaTrackCapabilities & {
+          zoom?: { min: number; max: number; step?: number };
+        };
+        if (capabilities.zoom) {
+          const zoom = Math.min(capabilities.zoom.max, Math.max(capabilities.zoom.min, 1));
+          try {
+            await track.applyConstraints({ advanced: [{ zoom } as MediaTrackConstraintSet] });
+          } catch {
+            // Một số trình duyệt báo có zoom nhưng không cho áp dụng trực tiếp.
+          }
+        }
+      }
       streamRef.current = stream;
       const v = videoRef.current!;
       v.srcObject = stream;
@@ -199,6 +221,32 @@ export function StampApp() {
     dataRef.current = data;
   }, [data]);
 
+  useEffect(() => {
+    if (img && !open && window.history.state?.timemarkLayer !== "photo") {
+      window.history.pushState({ ...window.history.state, timemarkLayer: "photo" }, "");
+    }
+  }, [img, open]);
+
+  useEffect(() => {
+    if (open && window.history.state?.timemarkLayer !== "editor") {
+      window.history.pushState({ ...window.history.state, timemarkLayer: "editor" }, "");
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const onBack = () => {
+      if (open) {
+        setOpen(false);
+      } else if (img) {
+        setImg(null);
+        setData((current) => ({ ...current, imageId: createTimemarkId() }));
+        startCamera(facing);
+      }
+    };
+    window.addEventListener("popstate", onBack);
+    return () => window.removeEventListener("popstate", onBack);
+  }, [facing, img, open, startCamera]);
+
   // vẽ khung hình camera + thẻ ghi chú liên tục
   useEffect(() => {
     if (cam !== "live" || img) return;
@@ -213,14 +261,14 @@ export function StampApp() {
           c.height = h;
         }
         const ctx = c.getContext("2d")!;
-        drawPortraitCrop(ctx, v, v.videoWidth, v.videoHeight, w, h);
+        drawPortraitCrop(ctx, v, v.videoWidth, v.videoHeight, w, h, facing === "environment" ? REAR_CROP_ZOOM : 1);
         rectRef.current = drawStamp(ctx, w, h, dataRef.current, resolveDate(dataRef.current));
       }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [cam, img]);
+  }, [cam, facing, img]);
 
   function capture() {
     const v = videoRef.current;
@@ -233,7 +281,15 @@ export function StampApp() {
     const t = document.createElement("canvas");
     t.width = width;
     t.height = height;
-    drawPortraitCrop(t.getContext("2d")!, v, v.videoWidth, v.videoHeight, width, height);
+    drawPortraitCrop(
+      t.getContext("2d")!,
+      v,
+      v.videoWidth,
+      v.videoHeight,
+      width,
+      height,
+      facing === "environment" ? REAR_CROP_ZOOM : 1,
+    );
     t.toBlob(
       (b) => {
         if (!b) return;
@@ -251,9 +307,19 @@ export function StampApp() {
   }
 
   function retake() {
+    if (window.history.state?.timemarkLayer === "photo") {
+      window.history.back();
+      return;
+    }
     setImg(null);
     setData((current) => ({ ...current, imageId: createTimemarkId() }));
     startCamera(facing);
+  }
+
+  function closeEditor() {
+    const shouldGoBack = window.history.state?.timemarkLayer === "editor";
+    setOpen(false);
+    if (shouldGoBack) window.history.back();
   }
 
   function flip() {
@@ -340,7 +406,11 @@ export function StampApp() {
     }
   }
 
-  const set = <K extends keyof StampData>(k: K, v: StampData[K]) => setData((d) => ({ ...d, [k]: v }));
+  const set = <K extends keyof StampData>(k: K, v: StampData[K]) => {
+    const next = { ...data, [k]: v };
+    saveCurrent(next);
+    setData(next);
+  };
 
   function savePreset() {
     const name = presetName.trim() || data.title.trim() || `Mẫu ${presets.length + 1}`;
@@ -360,8 +430,20 @@ export function StampApp() {
   return (
     <main className="relative mx-auto flex h-svh w-full max-w-[540px] flex-col overflow-hidden bg-white text-[#171717] shadow-2xl shadow-black/25">
       <header className="z-20 flex h-[76px] shrink-0 items-center justify-between gap-2 border-b border-black/5 bg-white px-4 text-black">
-        <button type="button" className="grid size-11 place-items-center" aria-label="Mở menu"><Menu className="size-8" strokeWidth={2.2} /></button>
-        <button type="button" className="grid size-11 place-items-center" onClick={flip} aria-label="Đổi camera"><ZapOff className="size-8" strokeWidth={2} /></button>
+        {img ? (
+          <button type="button" className="grid size-11 place-items-center" onClick={retake} aria-label="Quay lại camera"><ArrowLeft className="size-8" strokeWidth={2.2} /></button>
+        ) : (
+          <button type="button" className="grid size-11 place-items-center" aria-label="Mở menu"><Menu className="size-8" strokeWidth={2.2} /></button>
+        )}
+        <button
+          type="button"
+          className="grid size-11 place-items-center"
+          onClick={flip}
+          aria-label={facing === "environment" ? "Dùng camera trước" : "Dùng camera sau"}
+          title={facing === "environment" ? "Camera trước" : "Camera sau"}
+        >
+          <SwitchCamera className="size-8" strokeWidth={2} />
+        </button>
         <button type="button" className="flex h-11 items-center gap-2 rounded-full border-2 border-black/65 px-4 text-[15px] font-semibold" onClick={() => setOpen(true)}>
           <ShieldCheck className="size-6" /> Xác thực ảnh
         </button>
@@ -383,6 +465,7 @@ export function StampApp() {
               aria-label="Camera. Chạm vào thẻ để chỉnh sửa."
             />
             <div className="absolute bottom-5 right-4 grid gap-4 text-white">
+              <button type="button" onClick={flip} className="grid size-12 place-items-center rounded-full bg-black/25 shadow" aria-label={facing === "environment" ? "Dùng camera trước" : "Dùng camera sau"}><SwitchCamera className="size-8" /></button>
               <button type="button" className="grid size-12 place-items-center rounded-full border-2 border-white bg-black/20 text-sm font-medium shadow" aria-label="Mức thu phóng">1.0x</button>
               <button type="button" onClick={() => setOpen(true)} className="grid size-12 place-items-center rounded-2xl bg-black/20" aria-label="Sửa thông tin"><Pencil className="size-8" /></button>
               <button type="button" onClick={locate} className="grid size-12 place-items-center rounded-full bg-black/20" aria-label="Lấy vị trí"><MapPin className="size-9" /></button>
@@ -476,7 +559,7 @@ export function StampApp() {
         </>
       )}
 
-      <Sheet open={open} onOpenChange={setOpen}>
+      <Sheet open={open} onOpenChange={(next) => (next ? setOpen(true) : closeEditor())}>
         <SheetContent side="bottom" className="mx-auto max-h-[88vh] max-w-[540px] overflow-y-auto rounded-t-3xl border-white/10 bg-[#151515] p-4 text-white">
           <SheetHeader className="p-0">
             <SheetTitle>Thông tin trên ảnh</SheetTitle>
@@ -507,11 +590,27 @@ export function StampApp() {
 
             <div className="grid gap-1.5">
               <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="addr">Địa chỉ hiện tại</Label>
-                <Button type="button" variant="outline" size="sm" onClick={locate} disabled={locating}>
-                  {locating ? <LoaderCircle className="animate-spin" /> : <LocateFixed />}
-                  {locating ? "Đang lấy…" : "Lấy lại GPS"}
-                </Button>
+                <Label htmlFor="addr">{data.useManualAddress ? "Địa chỉ nhập tay" : "Địa chỉ hiện tại"}</Label>
+                {!data.useManualAddress && (
+                  <Button type="button" variant="outline" size="sm" onClick={locate} disabled={locating}>
+                    {locating ? <LoaderCircle className="animate-spin" /> : <LocateFixed />}
+                    {locating ? "Đang lấy…" : "Lấy lại GPS"}
+                  </Button>
+                )}
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
+                <div>
+                  <p className="text-sm font-medium">Dùng địa chỉ nhập tay</p>
+                  <p className="text-xs text-muted-foreground">Ghi nhớ lựa chọn cho những lần chụp sau</p>
+                </div>
+                <Switch
+                  checked={data.useManualAddress}
+                  onCheckedChange={(checked) => {
+                    set("useManualAddress", checked);
+                    if (!checked) locate();
+                  }}
+                  aria-label="Dùng địa chỉ nhập tay"
+                />
               </div>
               <Textarea
                 id="addr"
@@ -520,7 +619,11 @@ export function StampApp() {
                 value={data.address}
                 onChange={(e) => set("address", e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Tự lấy khi mở ứng dụng và vẫn có thể sửa tay. Dữ liệu địa chỉ: © OpenStreetMap contributors.</p>
+              <p className="text-xs text-muted-foreground">
+                {data.useManualAddress
+                  ? "Địa chỉ này được lưu trên máy và sẽ không bị GPS ghi đè."
+                  : "Tự lấy khi mở ứng dụng và vẫn có thể sửa tay. Dữ liệu địa chỉ: © OpenStreetMap contributors."}
+              </p>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="note">Ghi chú một dòng</Label>
@@ -585,7 +688,7 @@ export function StampApp() {
               </div>
             </div>
 
-            <Button size="lg" onClick={() => setOpen(false)}>
+            <Button size="lg" onClick={closeEditor}>
               Xong
             </Button>
           </div>

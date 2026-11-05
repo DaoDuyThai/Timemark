@@ -2,6 +2,7 @@ export type StampData = {
   /** "" = dùng thời điểm hiện tại; ngược lại dạng "YYYY-MM-DDTHH:mm" */
   datetime: string;
   address: string;
+  useManualAddress: boolean;
   title: string;
   name: string;
   note: string;
@@ -13,6 +14,7 @@ export type StampData = {
 export const DEFAULT_STAMP: StampData = {
   datetime: "",
   address: "",
+  useManualAddress: false,
   title: "Công ty của bạn",
   name: "Nhân viên",
   note: "Họ tên: Nhân viên",
@@ -116,7 +118,7 @@ export function drawStamp(
   const right = 28 * s;
   const bottom = 28 * s;
   const contentW = w - left - right;
-  const timeSize = 112 * s;
+  const timeSize = 120 * s;
   const dateSize = 34 * s;
   const addressSize = 35 * s;
   const noteSize = 35 * s;
@@ -150,19 +152,19 @@ export function drawStamp(
   ctx.fillStyle = "#ffffff";
   ctx.strokeStyle = "rgba(0,0,0,.25)";
   ctx.lineWidth = 1.5 * s;
-  ctx.font = `400 ${timeSize}px ${f}`;
-  const timeStretch = 0.84;
+  ctx.font = `500 ${timeSize}px ${f}`;
+  const timeStretch = 0.76;
   ctx.save();
   ctx.translate(left, 0);
   ctx.scale(timeStretch, 1);
-  ctx.fillText(time, 0, top + 104 * s);
+  ctx.fillText(time, 0, top + 110 * s);
   ctx.restore();
 
   const timeW = ctx.measureText(time).width * timeStretch;
   const dividerX = left + timeW + 18 * s;
   ctx.shadowColor = "rgba(0,0,0,.35)";
   ctx.fillStyle = data.accent;
-  ctx.fillRect(dividerX, top + 7 * s, 5 * s, 110 * s);
+  ctx.fillRect(dividerX, top + 7 * s, 5 * s, 116 * s);
 
   ctx.fillStyle = "#ffffff";
   ctx.font = `400 ${dateSize}px ${f}`;
