@@ -100,7 +100,7 @@ function StampOverlay({ data, date }: { data: StampData; date: Date }) {
     <div className="stamp-overlay" aria-hidden>
       <div className="stamp-vertical">
         <ShieldCheck />
-        <span>{code}</span>
+        <span className="stamp-id">{code}</span>
         <span>Timemark Verified</span>
       </div>
 

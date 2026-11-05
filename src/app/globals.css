@@ -334,9 +334,16 @@ canvas {
   transform: rotate(180deg);
 }
 
+.stamp-vertical .stamp-id {
+  font-size: 1.08em;
+}
+
 .stamp-vertical svg {
-  width: 2cqw;
-  height: 2cqw;
+  display: block;
+  width: 1em;
+  height: 1em;
+  align-self: center;
+  margin-inline-end: -0.4cqw;
   /* SVG does not inherit the sideways glyph orientation of vertical text. */
   transform: rotate(90deg);
   flex-shrink: 0;
