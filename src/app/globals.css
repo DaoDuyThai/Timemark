@@ -338,3 +338,141 @@ canvas {
   width: 2cqw;
   height: 2cqw;
 }
+
+/* Camera chrome uses its own sizing, independent of the exported photo. */
+.camera-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 60px;
+  padding: 8px 12px;
+}
+
+.camera-toolbar > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  white-space: nowrap;
+}
+
+.camera-toolbar > button:not(.rounded-full) {
+  width: 36px;
+  height: 40px;
+}
+
+.camera-toolbar > button > svg {
+  width: 27px;
+  height: 27px;
+  flex: none;
+}
+
+.camera-toolbar > button.rounded-full {
+  height: 34px;
+  padding-inline: 10px;
+  gap: 5px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.camera-toolbar > button.rounded-full > svg {
+  width: 20px;
+  height: 20px;
+}
+
+.camera-side-tools {
+  position: absolute;
+  right: 10px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(12px, 2.5svh, 22px);
+}
+
+.camera-side-tools > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  font-size: 13px;
+  background: rgb(0 0 0 / 12%);
+}
+
+.camera-side-tools > button > svg {
+  width: 25px;
+  height: 25px;
+}
+
+.camera-controls {
+  padding: 9px 16px max(10px, env(safe-area-inset-bottom));
+}
+
+.camera-team-link {
+  height: 42px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+.camera-shutter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 16px;
+}
+
+.camera-shutter-row > label,
+.camera-shutter-row > button:not([aria-label="Chụp"]) {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.camera-shutter-row > button[aria-label="Chụp"] {
+  flex: 0 0 76px;
+  width: 76px;
+  height: 76px;
+  margin: 0;
+}
+
+.camera-shutter-row > label > span,
+.camera-shutter-row > button > span {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+}
+
+.camera-shutter-row svg {
+  width: 23px;
+  height: 23px;
+}
+
+.camera-bottom-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 18px;
+  font-size: 11px;
+}
+
+.camera-bottom-nav > span {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 360px) {
+  .camera-toolbar { padding-inline: 6px; gap: 3px; }
+  .camera-toolbar > button.rounded-full { padding-inline: 7px; font-size: 12px; }
+  .camera-toolbar > button:not(.rounded-full) { width: 32px; }
+  .camera-bottom-nav { font-size: 10px; }
+}

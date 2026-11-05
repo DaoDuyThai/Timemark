@@ -342,8 +342,14 @@ export function StampApp() {
     const t = document.createElement("canvas");
     t.width = width;
     t.height = height;
+    const captureContext = t.getContext("2d")!;
+    // Selfie preview and saved photo share the same mirrored orientation.
+    if (facing === "user") {
+      captureContext.translate(width, 0);
+      captureContext.scale(-1, 1);
+    }
     drawPortraitCrop(
-      t.getContext("2d")!,
+      captureContext,
       v,
       v.videoWidth,
       v.videoHeight,
@@ -488,7 +494,7 @@ export function StampApp() {
 
   return (
     <main className="relative mx-auto flex h-svh w-full max-w-[540px] flex-col overflow-hidden bg-white text-[#171717] shadow-2xl shadow-black/25">
-      <header className="z-20 flex h-[76px] shrink-0 items-center justify-between gap-2 border-b border-black/5 bg-white px-4 text-black">
+      <header className="camera-toolbar z-20 shrink-0 border-b border-black/5 bg-white text-black">
         {img ? (
           <button type="button" className="grid size-11 place-items-center" onClick={retake} aria-label="Quay lại camera"><ArrowLeft className="size-8" strokeWidth={2.2} /></button>
         ) : (
@@ -523,11 +529,11 @@ export function StampApp() {
                 playsInline
                 muted
                 data-html2canvas-ignore
-                className="stamp-photo"
+                className={facing === "user" ? "stamp-photo -scale-x-100" : "stamp-photo"}
               />
               <StampOverlay data={data} date={stampDate} />
             </div>
-            <div className="absolute bottom-5 right-4 grid gap-4 text-white">
+            <div className="camera-side-tools text-white">
               <button type="button" onClick={flip} className="grid size-12 place-items-center rounded-full bg-black/25 shadow" aria-label={facing === "environment" ? "Dùng camera trước" : "Dùng camera sau"}><SwitchCamera className="size-8" /></button>
               <button type="button" className="grid size-12 place-items-center rounded-full border-2 border-white bg-black/20 text-sm font-medium shadow" aria-label="Mức thu phóng">1.0x</button>
               <button type="button" onClick={() => setOpen(true)} className="grid size-12 place-items-center rounded-2xl bg-black/20" aria-label="Sửa thông tin"><Pencil className="size-8" /></button>
@@ -535,11 +541,11 @@ export function StampApp() {
             </div>
           </section>
 
-          <div className="shrink-0 bg-white px-4 pb-[max(.65rem,env(safe-area-inset-bottom))] pt-3 text-black">
-            <button type="button" className="mb-3 flex h-12 w-full items-center justify-center gap-3 rounded-2xl bg-[#d9efff] text-[18px] font-medium text-[#06346f]">
+          <div className="camera-controls shrink-0 bg-white text-black">
+            <button type="button" className="camera-team-link flex w-full items-center justify-center gap-3 bg-[#d9efff] font-medium text-[#06346f]">
               Không gian đội nhóm <span aria-hidden>→</span>
             </button>
-            <div className="grid grid-cols-3 items-center px-4">
+            <div className="camera-shutter-row">
               <label className="flex cursor-pointer flex-col items-center gap-1 text-xs text-black/60">
                 <input type="file" accept="image/*" hidden onChange={(e) => onFile(e.target.files?.[0])} />
                 <span className="grid size-12 place-items-center rounded-xl border-2 border-black"><Images className="size-7" /></span>
@@ -551,7 +557,7 @@ export function StampApp() {
                 Bản mẫu
               </button>
             </div>
-            <nav className="mt-3 grid grid-cols-5 text-[11px] text-black/45" aria-label="Điều hướng chính">
+            <nav className="camera-bottom-nav text-black/45" aria-label="Điều hướng chính">
               <span className="flex flex-col items-center gap-0.5"><BarChart3 className="size-4" />Báo cáo</span>
               <span className="flex flex-col items-center gap-0.5"><Video className="size-4" />Video</span>
               <span className="flex flex-col items-center gap-0.5 font-semibold text-black"><Camera className="size-4" />Ảnh</span>
