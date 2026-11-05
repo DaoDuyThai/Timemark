@@ -192,14 +192,14 @@ canvas {
 .stamp-time-row {
   display: flex;
   align-items: stretch;
-  height: 10.15cqw;
+  height: 10.962cqw;
   margin-bottom: 2.45cqw;
 }
 
 .stamp-time-box {
   position: relative;
-  width: 22.15cqw;
-  flex: 0 0 22.15cqw;
+  width: 23.922cqw;
+  flex: 0 0 23.922cqw;
   overflow: visible;
 }
 
@@ -209,7 +209,7 @@ canvas {
   bottom: 0;
   display: block;
   width: max-content;
-  font-size: 11.7cqw;
+  font-size: 12.636cqw;
   font-weight: 400;
   line-height: 0.87;
   letter-spacing: -0.05cqw;
@@ -233,7 +233,7 @@ canvas {
   flex-direction: column;
   justify-content: space-between;
   padding-block: 0.05cqw 0.08cqw;
-  font-size: 3.5cqw;
+  font-size: 3.78cqw;
   font-weight: 400;
   line-height: 1;
   white-space: nowrap;
@@ -242,7 +242,7 @@ canvas {
 .stamp-address {
   max-width: 83cqw;
   margin-bottom: 2.45cqw;
-  font-size: 4cqw;
+  font-size: 4.32cqw;
   font-weight: 400;
   line-height: 1.2;
   white-space: pre-line;
@@ -297,7 +297,7 @@ canvas {
 }
 
 .stamp-brand strong {
-  font-size: 3.85cqw;
+  font-size: 4.158cqw;
   font-style: normal;
   font-weight: 700;
   line-height: 0.95;
@@ -310,7 +310,7 @@ canvas {
 
 .stamp-brand small {
   margin-top: 0.55cqw;
-  font-size: 1.95cqw;
+  font-size: 2.106cqw;
   font-weight: 400;
   line-height: 1;
 }
@@ -322,7 +322,7 @@ canvas {
   display: flex;
   align-items: center;
   gap: 0.7cqw;
-  font-size: 1.52cqw;
+  font-size: 1.6416cqw;
   font-weight: 400;
   line-height: 1;
   text-shadow: 0 0.08cqw 0.18cqw #000;
