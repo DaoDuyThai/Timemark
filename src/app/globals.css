@@ -321,7 +321,7 @@ canvas {
 
 .stamp-vertical {
   position: absolute;
-  top: 28.5%;
+  top: 50%;
   right: 1.55cqw;
   display: flex;
   align-items: center;
@@ -331,7 +331,7 @@ canvas {
   line-height: 1;
   text-shadow: 0 0.08cqw 0.18cqw #000;
   writing-mode: vertical-rl;
-  transform: rotate(180deg);
+  transform: translateY(-50%) rotate(180deg);
 }
 
 .stamp-vertical .stamp-id {
