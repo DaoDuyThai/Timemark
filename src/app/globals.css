@@ -193,7 +193,7 @@ canvas {
   display: flex;
   align-items: stretch;
   height: 10.15cqw;
-  margin-bottom: 3.35cqw;
+  margin-bottom: 2.45cqw;
 }
 
 .stamp-time-box {
@@ -206,14 +206,14 @@ canvas {
 .stamp-time-box > span {
   position: absolute;
   left: 0;
-  bottom: -0.35cqw;
+  bottom: 0;
   display: block;
   width: max-content;
-  font-size: 13.35cqw;
-  font-weight: 500;
-  line-height: 0.78;
-  letter-spacing: -0.18cqw;
-  transform: scaleX(0.72);
+  font-size: 11.7cqw;
+  font-weight: 400;
+  line-height: 0.87;
+  letter-spacing: -0.05cqw;
+  transform: scaleX(0.82);
   transform-origin: left bottom;
   white-space: nowrap;
 }
@@ -222,6 +222,7 @@ canvas {
   width: 0.35cqw;
   flex: 0 0 0.35cqw;
   height: 100%;
+  margin-left: 0.75cqw;
   margin-right: 1.45cqw;
   box-shadow: 0 0.14cqw 0.32cqw rgb(0 0 0 / 36%);
 }
@@ -240,7 +241,7 @@ canvas {
 
 .stamp-address {
   max-width: 83cqw;
-  margin-bottom: 3.25cqw;
+  margin-bottom: 2.45cqw;
   font-size: 4cqw;
   font-weight: 400;
   line-height: 1.2;
@@ -265,9 +266,9 @@ canvas {
   background: linear-gradient(
     90deg,
     rgb(142 145 143 / 52%) 0%,
-    rgb(142 145 143 / 46%) 54%,
-    rgb(142 145 143 / 17%) 70%,
-    transparent 82%
+    rgb(142 145 143 / 42%) 34%,
+    rgb(142 145 143 / 14%) 45%,
+    transparent 50%
   );
 }
 

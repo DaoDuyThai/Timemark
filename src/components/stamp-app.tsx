@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import html2canvas from "html2canvas";
+import { toCanvas } from "html-to-image";
 import {
   ArrowLeft,
   BarChart3,
@@ -122,7 +122,7 @@ function StampOverlay({ data, date }: { data: StampData; date: Date }) {
           <span className="stamp-note" style={{ fontSize: `${noteSize}cqw` }}>{data.note}</span>
           <span className="stamp-brand">
             <strong><em>Time</em>mark</strong>
-            <small>Timemark Verified</small>
+            <small>100% Chân thực</small>
           </span>
         </div>
       </div>
@@ -384,30 +384,31 @@ export function StampApp() {
   }
 
   async function compositionBlob(): Promise<Blob | null> {
-    if (process.env.NODE_ENV === "development") console.info("stamp-export:composition-start");
     const node = compositionRef.current;
     if (!node || !img) return null;
     const { width } = portraitOutputSize(img.naturalWidth, img.naturalHeight);
-    const canvas = await html2canvas(node, {
-      scale: width / node.clientWidth,
+    const canvas = await toCanvas(node, {
+      pixelRatio: width / node.clientWidth,
       backgroundColor: "#000000",
-      useCORS: true,
-      logging: process.env.NODE_ENV === "development",
+      cacheBust: true,
     });
-    if (process.env.NODE_ENV === "development") console.info("stamp-export:capture-done");
     return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.94));
   }
 
   async function download() {
-    if (process.env.NODE_ENV === "development") console.info("stamp-export:download-start");
     try {
       const b = await compositionBlob();
       if (!b) throw new Error("empty image");
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(b);
+      const url = URL.createObjectURL(b);
+      a.href = url;
       a.download = `stampnote-${Date.now()}.jpg`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(a.href);
+      a.remove();
+      // Android/PWA cần blob URL còn sống cho tới khi trình quản lý tải xuống
+      // nhận xong request; revoke ngay sau click có thể làm mất file.
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
       toast.success("Đã lưu ảnh");
     } catch {
       toast.error("Không xuất được ảnh. Hãy thử lại.");
