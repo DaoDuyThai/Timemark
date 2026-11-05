@@ -140,7 +140,7 @@ export function drawStamp(
   let cardY = h - bottom - cardH;
   const addressLastBaseline = cardY - 34 * s;
   const addressFirstBaseline = addressLastBaseline - Math.max(0, visibleAddressLines.length - 1) * addressLineH;
-  let top = addressFirstBaseline - 212 * s;
+  let top = addressFirstBaseline - 226 * s;
 
   if (data.position === "top") {
     const shift = 54 * s - top;
@@ -157,14 +157,18 @@ export function drawStamp(
   ctx.save();
   ctx.translate(left, 0);
   ctx.scale(timeStretch, 1);
-  ctx.fillText(time, 0, top + 134 * s);
+  const timeBaseline = top + 134 * s;
+  ctx.fillText(time, 0, timeBaseline);
   ctx.restore();
 
   const timeW = ctx.measureText(time).width * timeStretch;
+  const timeMetrics = ctx.measureText(time);
+  const timeTop = timeBaseline - timeMetrics.actualBoundingBoxAscent;
+  const timeBottom = timeBaseline + timeMetrics.actualBoundingBoxDescent;
   const dividerX = left + timeW + 18 * s;
   ctx.shadowColor = "rgba(0,0,0,.35)";
   ctx.fillStyle = data.accent;
-  ctx.fillRect(dividerX, top + 7 * s, 5 * s, 132 * s);
+  ctx.fillRect(dividerX, timeTop, 5 * s, Math.max(1, timeBottom - timeTop));
 
   ctx.fillStyle = "#ffffff";
   ctx.font = `400 ${dateSize}px ${f}`;
@@ -184,8 +188,9 @@ export function drawStamp(
   ctx.shadowColor = "transparent";
   const cardGradient = ctx.createLinearGradient(left - 2 * s, 0, w - right, 0);
   cardGradient.addColorStop(0, "rgba(142,145,143,.52)");
-  cardGradient.addColorStop(0.58, "rgba(142,145,143,.46)");
-  cardGradient.addColorStop(0.82, "rgba(142,145,143,.16)");
+  cardGradient.addColorStop(0.55, "rgba(142,145,143,.46)");
+  cardGradient.addColorStop(0.7, "rgba(142,145,143,.18)");
+  cardGradient.addColorStop(0.8, "rgba(142,145,143,0)");
   cardGradient.addColorStop(1, "rgba(142,145,143,0)");
   ctx.fillStyle = cardGradient;
   roundRect(ctx, left - 2 * s, cardY, contentW + 4 * s, cardH, 9 * s);
@@ -221,11 +226,35 @@ export function drawStamp(
   ctx.font = `400 ${16 * s}px ${f}`;
   ctx.textAlign = "center";
   ctx.fillStyle = "rgba(255,255,255,.96)";
-  ctx.fillText(`${code}   Timemark Verified`, 0, 0);
+  const verticalLabel = `${code}   Timemark Verified`;
+  ctx.fillText(verticalLabel, 0, 0);
+  const labelWidth = ctx.measureText(verticalLabel).width;
+  drawVerifiedShield(ctx, -labelWidth / 2 - 21 * s, -6 * s, 13 * s);
   ctx.restore();
   ctx.restore();
 
   return { x: left - 2 * s, y: cardY, w: contentW + 4 * s, h: cardH };
+}
+
+function drawVerifiedShield(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.strokeStyle = "rgba(255,255,255,.96)";
+  ctx.lineWidth = Math.max(1, size * 0.13);
+  ctx.beginPath();
+  ctx.moveTo(0, -size * 0.58);
+  ctx.lineTo(size * 0.48, -size * 0.35);
+  ctx.lineTo(size * 0.4, size * 0.28);
+  ctx.quadraticCurveTo(0, size * 0.7, -size * 0.4, size * 0.28);
+  ctx.lineTo(-size * 0.48, -size * 0.35);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-size * 0.2, 0);
+  ctx.lineTo(-size * 0.03, size * 0.18);
+  ctx.lineTo(size * 0.25, -size * 0.18);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function fitFontSize(
