@@ -337,6 +337,9 @@ canvas {
 .stamp-vertical svg {
   width: 2cqw;
   height: 2cqw;
+  /* SVG does not inherit the sideways glyph orientation of vertical text. */
+  transform: rotate(90deg);
+  flex-shrink: 0;
 }
 
 /* Camera chrome uses its own sizing, independent of the exported photo. */
