@@ -122,7 +122,7 @@ function StampOverlay({ data, date }: { data: StampData; date: Date }) {
           <span className="stamp-note" style={{ fontSize: `${noteSize * 1.08}cqw` }}>{data.note}</span>
           <span className="stamp-brand">
             <strong><em>Time</em>mark</strong>
-            <small>100% Chân thực</small>
+            <small className="text-[14px]">100% Chân thực</small>
           </span>
         </div>
       </div>
