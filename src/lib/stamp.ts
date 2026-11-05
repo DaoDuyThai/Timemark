@@ -72,7 +72,7 @@ export async function ensureStampFont() {
   const f = stampFontFamily();
   try {
     await Promise.all([
-      document.fonts.load(`400 120px ${f}`, "13:57"),
+      document.fonts.load(`500 144px ${f}`, "13:57"),
       document.fonts.load(`700 40px ${f}`, "0123456789:ĐđÂâ"),
       document.fonts.load(`500 20px ${f}`, "Tháng Thứ Hà Nội"),
       document.fonts.load(`400 20px ${f}`, "Địa chỉ"),
@@ -152,7 +152,7 @@ export function drawStamp(
   ctx.fillStyle = "#ffffff";
   ctx.strokeStyle = "rgba(0,0,0,.25)";
   ctx.lineWidth = 1.5 * s;
-  ctx.font = `400 ${timeSize}px ${f}`;
+  ctx.font = `500 ${timeSize}px ${f}`;
   const timeStretch = 0.69;
   ctx.save();
   ctx.translate(left, 0);
@@ -165,17 +165,22 @@ export function drawStamp(
   const timeMetrics = ctx.measureText(time);
   const timeTop = timeBaseline - timeMetrics.actualBoundingBoxAscent;
   const timeBottom = timeBaseline + timeMetrics.actualBoundingBoxDescent;
+  const timeHeight = timeBottom - timeTop;
   const dividerX = left + timeW + 18 * s;
   ctx.shadowColor = "rgba(0,0,0,.35)";
   ctx.fillStyle = data.accent;
-  ctx.fillRect(dividerX, timeTop, 5 * s, Math.max(1, timeBottom - timeTop));
+  // Cùng một "flex row" với giờ: separator chiếm đúng 100% chiều cao
+  // bounding box của chữ giờ, không dùng chiều cao ước lượng độc lập.
+  ctx.fillRect(dividerX, timeTop, 5 * s, Math.max(1, timeHeight));
 
   ctx.fillStyle = "#ffffff";
   ctx.font = `400 ${dateSize}px ${f}`;
   const dateX = dividerX + 19 * s;
-  ctx.fillText(dateStr, dateX, top + 43 * s);
-  ctx.font = `500 ${dateSize}px ${f}`;
-  ctx.fillText(weekday, dateX, top + 106 * s);
+  const dateMetrics = ctx.measureText(dateStr);
+  // Cột phải tương đương flex-col + justify-content: space-between.
+  ctx.fillText(dateStr, dateX, timeTop + dateMetrics.actualBoundingBoxAscent);
+  const weekdayMetrics = ctx.measureText(weekday);
+  ctx.fillText(weekday, dateX, timeBottom - weekdayMetrics.actualBoundingBoxDescent);
 
   // Địa chỉ chính.
   ctx.font = `400 ${addressSize}px ${f}`;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import html2canvas from "html2canvas";
 import {
   ArrowLeft,
   BarChart3,
@@ -37,18 +38,18 @@ import {
   ACCENTS,
   createTimemarkId,
   DEFAULT_STAMP,
-  drawStamp,
   ensureStampFont,
+  formatParts,
   resolveDate,
   toLocalInput,
   type StampData,
-  type StampRect,
 } from "@/lib/stamp";
 import { loadCurrent, loadPresets, saveCurrent, savePresets, type Preset } from "@/lib/storage";
 
 const MAX_SIDE = 2560;
 const PORTRAIT_ASPECT = 3 / 4;
 const REAR_CROP_ZOOM = 1;
+const PRERENDER_DATE = new Date("2000-01-01T00:00:00");
 
 function portraitOutputSize(sourceWidth: number, sourceHeight: number) {
   const sourceAspect = sourceWidth / sourceHeight;
@@ -90,24 +91,63 @@ function drawPortraitCrop(
   ctx.drawImage(source, sx, sy, cropWidth, cropHeight, 0, 0, width, height);
 }
 
+function StampOverlay({ data, date }: { data: StampData; date: Date }) {
+  const { time, date: dateText, weekday } = formatParts(date);
+  const code = data.imageId || `TM${date.getTime().toString(36).toUpperCase()}`;
+  const noteSize = data.note.length > 34 ? Math.max(2.6, 4 - (data.note.length - 34) * 0.035) : 4;
+
+  return (
+    <div className="stamp-overlay" aria-hidden>
+      <div className="stamp-vertical">
+        <ShieldCheck />
+        <span>{code}</span>
+        <span>Timemark Verified</span>
+      </div>
+
+      <div className={data.position === "top" ? "stamp-content stamp-content-top" : "stamp-content"}>
+        <div className="stamp-time-row">
+          <div className="stamp-time-box">
+            <span>{time}</span>
+          </div>
+          <div className="stamp-separator" style={{ backgroundColor: data.accent }} />
+          <div className="stamp-date-column">
+            <span>{dateText}</span>
+            <span>{weekday}</span>
+          </div>
+        </div>
+
+        <div className="stamp-address">{data.address}</div>
+
+        <div className="stamp-card">
+          <span className="stamp-note" style={{ fontSize: `${noteSize}cqw` }}>{data.note}</span>
+          <span className="stamp-brand">
+            <strong><em>Time</em>mark</strong>
+            <small>Timemark Verified</small>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function StampApp() {
   const [data, setData] = useState<StampData>(DEFAULT_STAMP);
   const [presets, setPresets] = useState<Preset[]>([]);
   const [presetName, setPresetName] = useState("");
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [open, setOpen] = useState(false);
-  const [ready, setReady] = useState(false);
   const [nowStr, setNowStr] = useState("");
   const [locating, setLocating] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rectRef = useRef<StampRect | null>(null);
+  const compositionRef = useRef<HTMLDivElement>(null);
   const closingEditorRef = useRef(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const dataRef = useRef(data);
   const [cam, setCam] = useState<"idle" | "live" | "failed">("idle");
   const [facing, setFacing] = useState<"environment" | "user">("environment");
+  const [clock, setClock] = useState<Date | null>(null);
+  const [capturedAt, setCapturedAt] = useState<Date | null>(null);
 
   const locate = useCallback(() => {
     if (!navigator.geolocation) {
@@ -155,7 +195,7 @@ export function StampApp() {
     setPresets(loadPresets());
     setNowStr(toLocalInput(new Date()));
     setHydrated(true);
-    ensureStampFont().then(() => setReady(true));
+    ensureStampFont();
     if (!saved.useManualAddress) locate();
   }, [locate]);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -164,6 +204,19 @@ export function StampApp() {
   useEffect(() => {
     if (hydrated) saveCurrent(data);
   }, [data, hydrated]);
+
+  useEffect(() => {
+    setClock(new Date());
+    const timer = window.setInterval(() => setClock(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const preview = previewVideoRef.current;
+    if (cam !== "live" || !preview || !streamRef.current) return;
+    preview.srcObject = streamRef.current;
+    void preview.play();
+  }, [cam]);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -219,10 +272,6 @@ export function StampApp() {
   }, [startCamera]);
 
   useEffect(() => {
-    dataRef.current = data;
-  }, [data]);
-
-  useEffect(() => {
     if (img && !open && window.history.state?.timemarkLayer !== "photo") {
       window.history.pushState({ ...window.history.state, timemarkLayer: "photo" }, "");
     }
@@ -253,29 +302,6 @@ export function StampApp() {
     return () => window.removeEventListener("popstate", onBack);
   }, [facing, img, open, startCamera]);
 
-  // vẽ khung hình camera + thẻ ghi chú liên tục
-  useEffect(() => {
-    if (cam !== "live" || img) return;
-    let raf = 0;
-    const loop = () => {
-      const c = canvasRef.current;
-      const v = videoRef.current;
-      if (c && v && v.videoWidth) {
-        const { width: w, height: h } = portraitOutputSize(v.videoWidth, v.videoHeight);
-        if (c.width !== w || c.height !== h) {
-          c.width = w;
-          c.height = h;
-        }
-        const ctx = c.getContext("2d")!;
-        drawPortraitCrop(ctx, v, v.videoWidth, v.videoHeight, w, h, facing === "environment" ? REAR_CROP_ZOOM : 1);
-        rectRef.current = drawStamp(ctx, w, h, dataRef.current, resolveDate(dataRef.current));
-      }
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [cam, facing, img]);
-
   function capture() {
     const v = videoRef.current;
     if (!v || !v.videoWidth) return;
@@ -296,20 +322,14 @@ export function StampApp() {
       height,
       facing === "environment" ? REAR_CROP_ZOOM : 1,
     );
-    t.toBlob(
-      (b) => {
-        if (!b) return;
-        const im = new Image();
-        im.onload = () => {
-          setImg(im);
-          setData((current) => ({ ...current, imageId: createTimemarkId() }));
-          stopCamera();
-        };
-        im.src = URL.createObjectURL(b);
-      },
-      "image/jpeg",
-      0.95,
-    );
+    const im = new Image();
+    im.onload = () => {
+      setImg(im);
+      setCapturedAt(new Date());
+      setData((current) => ({ ...current, imageId: createTimemarkId() }));
+      stopCamera();
+    };
+    im.src = t.toDataURL("image/jpeg", 0.95);
   }
 
   function retake() {
@@ -318,6 +338,7 @@ export function StampApp() {
       return;
     }
     setImg(null);
+    setCapturedAt(null);
     setData((current) => ({ ...current, imageId: createTimemarkId() }));
     startCamera(facing);
   }
@@ -335,81 +356,76 @@ export function StampApp() {
     startCamera(next);
   }
 
-  const render = useCallback(() => {
-    const c = canvasRef.current;
-    if (!c || !img) return;
-    const { width: w, height: h } = portraitOutputSize(img.naturalWidth, img.naturalHeight);
-    c.width = w;
-    c.height = h;
-    const ctx = c.getContext("2d")!;
-    drawPortraitCrop(ctx, img, img.naturalWidth, img.naturalHeight, w, h);
-    rectRef.current = drawStamp(ctx, w, h, data, resolveDate(data));
-  }, [img, data]);
-
-  useEffect(() => {
-    render();
-  }, [render, ready]);
-
   function onFile(file?: File | null) {
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    const im = new Image();
-    im.onload = () => {
-      if (im.naturalWidth >= im.naturalHeight) {
-        URL.revokeObjectURL(url);
-        toast.error("Chỉ hỗ trợ ảnh dọc. Vui lòng chọn ảnh khác.");
-        return;
-      }
-      setImg(im);
-      stopCamera();
-      // ngày giờ điền sẵn: nếu chưa có thì lấy thời điểm hiện tại
-      setData((d) => ({
-        ...d,
-        datetime: d.datetime || toLocalInput(new Date()),
-        imageId: createTimemarkId(),
-      }));
+    const reader = new FileReader();
+    reader.onload = () => {
+      const im = new Image();
+      im.onload = () => {
+        if (im.naturalWidth >= im.naturalHeight) {
+          toast.error("Chỉ hỗ trợ ảnh dọc. Vui lòng chọn ảnh khác.");
+          return;
+        }
+        setImg(im);
+        setCapturedAt(new Date());
+        stopCamera();
+        // ngày giờ điền sẵn: nếu chưa có thì lấy thời điểm hiện tại
+        setData((d) => ({
+          ...d,
+          datetime: d.datetime || toLocalInput(new Date()),
+          imageId: createTimemarkId(),
+        }));
+      };
+      im.onerror = () => toast.error("Không đọc được ảnh");
+      im.src = String(reader.result);
     };
-    im.onerror = () => toast.error("Không đọc được ảnh");
-    im.src = url;
+    reader.onerror = () => toast.error("Không đọc được ảnh");
+    reader.readAsDataURL(file);
   }
 
-  function onCanvasClick(e: React.MouseEvent<HTMLCanvasElement>) {
-    const c = canvasRef.current;
-    const r = rectRef.current;
-    if (!c || !r) return;
-    const b = c.getBoundingClientRect();
-    const x = ((e.clientX - b.left) / b.width) * c.width;
-    const y = ((e.clientY - b.top) / b.height) * c.height;
-    if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) setOpen(true);
-  }
-
-  function toBlob(): Promise<Blob | null> {
-    return new Promise((res) => canvasRef.current?.toBlob(res, "image/jpeg", 0.92));
+  async function compositionBlob(): Promise<Blob | null> {
+    if (process.env.NODE_ENV === "development") console.info("stamp-export:composition-start");
+    const node = compositionRef.current;
+    if (!node || !img) return null;
+    const { width } = portraitOutputSize(img.naturalWidth, img.naturalHeight);
+    const canvas = await html2canvas(node, {
+      scale: width / node.clientWidth,
+      backgroundColor: "#000000",
+      useCORS: true,
+      logging: process.env.NODE_ENV === "development",
+    });
+    if (process.env.NODE_ENV === "development") console.info("stamp-export:capture-done");
+    return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.94));
   }
 
   async function download() {
-    const b = await toBlob();
-    if (!b) return;
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(b);
-    a.download = `stampnote-${Date.now()}.jpg`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    toast.success("Đã lưu ảnh");
+    if (process.env.NODE_ENV === "development") console.info("stamp-export:download-start");
+    try {
+      const b = await compositionBlob();
+      if (!b) throw new Error("empty image");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(b);
+      a.download = `stampnote-${Date.now()}.jpg`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast.success("Đã lưu ảnh");
+    } catch {
+      toast.error("Không xuất được ảnh. Hãy thử lại.");
+    }
   }
 
   async function share() {
-    const b = await toBlob();
-    if (!b) return;
-    const file = new File([b], `stampnote-${Date.now()}.jpg`, { type: "image/jpeg" });
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
+    try {
+      const b = await compositionBlob();
+      if (!b) throw new Error("empty image");
+      const file = new File([b], `stampnote-${Date.now()}.jpg`, { type: "image/jpeg" });
+      if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file] });
-      } catch {
-        /* người dùng huỷ */
+      } else {
+        await download();
       }
-    } else {
-      download();
+    } catch {
+      toast.error("Không chia sẻ được ảnh. Hãy thử lưu ảnh trước.");
     }
   }
 
@@ -433,6 +449,12 @@ export function StampApp() {
     setPresets(next);
     savePresets(next);
   }
+
+  const stampDate = data.datetime
+    ? resolveDate(data)
+    : img
+      ? capturedAt || clock || PRERENDER_DATE
+      : clock || PRERENDER_DATE;
 
   return (
     <main className="relative mx-auto flex h-svh w-full max-w-[540px] flex-col overflow-hidden bg-white text-[#171717] shadow-2xl shadow-black/25">
@@ -460,17 +482,21 @@ export function StampApp() {
         <button type="button" className="grid size-11 place-items-center" aria-label="Quét"><ScanLine className="size-8" /></button>
       </header>
 
-      <video ref={videoRef} playsInline muted className="hidden" />
+      <video ref={videoRef} playsInline muted className="hidden" data-html2canvas-ignore />
 
       {!img && cam === "live" ? (
         <>
-          <section className="relative min-h-0 flex-1 overflow-hidden bg-black">
-            <canvas
-              ref={canvasRef}
-              onClick={onCanvasClick}
-              className="h-full w-full cursor-pointer bg-black object-contain"
-              aria-label="Camera. Chạm vào thẻ để chỉnh sửa."
-            />
+          <section className="stamp-stage relative min-h-0 flex-1 overflow-hidden bg-black">
+            <div className="stamp-frame" onClick={() => setOpen(true)}>
+              <video
+                ref={previewVideoRef}
+                playsInline
+                muted
+                data-html2canvas-ignore
+                className={facing === "user" ? "stamp-photo -scale-x-100" : "stamp-photo"}
+              />
+              <StampOverlay data={data} date={stampDate} />
+            </div>
             <div className="absolute bottom-5 right-4 grid gap-4 text-white">
               <button type="button" onClick={flip} className="grid size-12 place-items-center rounded-full bg-black/25 shadow" aria-label={facing === "environment" ? "Dùng camera trước" : "Dùng camera sau"}><SwitchCamera className="size-8" /></button>
               <button type="button" className="grid size-12 place-items-center rounded-full border-2 border-white bg-black/20 text-sm font-medium shadow" aria-label="Mức thu phóng">1.0x</button>
@@ -538,13 +564,17 @@ export function StampApp() {
         </div>
       ) : (
         <>
-          <section className="flex min-h-0 flex-1 items-center overflow-hidden bg-black">
-            <canvas
-              ref={canvasRef}
-              onClick={onCanvasClick}
-              className="max-h-full w-full cursor-pointer bg-black object-contain"
+          <section className="stamp-stage flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black">
+            <div
+              ref={compositionRef}
+              className="stamp-frame"
+              onClick={() => setOpen(true)}
               aria-label="Ảnh đã đóng dấu. Chạm vào thẻ để chỉnh sửa."
-            />
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- ảnh blob cục bộ từ camera/thư viện */}
+              <img src={img.src} alt="Ảnh đã chụp" className="stamp-photo" />
+              <StampOverlay data={data} date={stampDate} />
+            </div>
           </section>
           <p className="shrink-0 px-4 py-1.5 text-center text-xs text-black/45">
             Chạm vào thẻ trên ảnh để sửa ngày giờ và nội dung
