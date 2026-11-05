@@ -101,7 +101,7 @@ function StampOverlay({ data, date }: { data: StampData; date: Date }) {
       <div className="stamp-vertical">
         <ShieldCheck />
         <span className="stamp-id">{code}</span>
-        <span>Timemark Verified</span>
+        <span className="stamp-id">Timemark Verified</span>
       </div>
 
       <div className={data.position === "top" ? "stamp-content stamp-content-top" : "stamp-content"}>
@@ -122,7 +122,7 @@ function StampOverlay({ data, date }: { data: StampData; date: Date }) {
           <span className="stamp-note" style={{ fontSize: `${noteSize * 1.08}cqw` }}>{data.note}</span>
           <span className="stamp-brand">
             <strong><em>Time</em>mark</strong>
-            <small className="text-[14px]">100% Chân thực</small>
+            <small className="text-[24px]">100% Chân thực</small>
           </span>
         </div>
       </div>
