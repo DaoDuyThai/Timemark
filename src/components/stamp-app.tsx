@@ -144,6 +144,8 @@ export function StampApp() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const cameraRequestRef = useRef(0);
+  const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
   const [cam, setCam] = useState<"idle" | "live" | "failed">("idle");
   const [facing, setFacing] = useState<"environment" | "user">("environment");
   const [clock, setClock] = useState<Date | null>(null);
@@ -213,19 +215,28 @@ export function StampApp() {
 
   useEffect(() => {
     const preview = previewVideoRef.current;
-    if (cam !== "live" || !preview || !streamRef.current) return;
-    preview.srcObject = streamRef.current;
-    void preview.play();
-  }, [cam]);
+    if (cam !== "live" || !preview || !activeStream || img) return;
+    preview.srcObject = activeStream;
+    void preview.play().catch(() => {
+      if (streamRef.current === activeStream) setCam("failed");
+    });
+    return () => { preview.srcObject = null; };
+  }, [activeStream, cam, img]);
 
   const stopCamera = useCallback(() => {
+    cameraRequestRef.current += 1;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    setActiveStream(null);
     setCam("idle");
   }, []);
 
   const startCamera = useCallback(async (mode: "environment" | "user") => {
+    const requestId = ++cameraRequestRef.current;
     streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setActiveStream(null);
+    setCam("idle");
     if (!navigator.mediaDevices?.getUserMedia) {
       setCam("failed");
       return;
@@ -240,6 +251,10 @@ export function StampApp() {
         },
         audio: false,
       });
+      if (requestId !== cameraRequestRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
       const track = stream.getVideoTracks()[0];
       if (mode === "environment" && track?.getCapabilities) {
         const capabilities = track.getCapabilities() as MediaTrackCapabilities & {
@@ -254,13 +269,24 @@ export function StampApp() {
           }
         }
       }
+      if (requestId !== cameraRequestRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
       streamRef.current = stream;
       const v = videoRef.current!;
       v.srcObject = stream;
       await v.play();
+      if (requestId !== cameraRequestRef.current) return;
+      setActiveStream(stream);
       setCam("live");
     } catch {
-      setCam("failed");
+      if (requestId === cameraRequestRef.current) {
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        setActiveStream(null);
+        setCam("failed");
+      }
     }
   }, []);
 
@@ -268,7 +294,10 @@ export function StampApp() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     startCamera("environment");
-    return () => streamRef.current?.getTracks().forEach((t) => t.stop());
+    return () => {
+      cameraRequestRef.current += 1;
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+    };
   }, [startCamera]);
 
   useEffect(() => {

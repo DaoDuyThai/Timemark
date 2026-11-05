@@ -144,13 +144,17 @@ canvas {
 
 .stamp-stage {
   container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .stamp-frame {
   position: relative;
   aspect-ratio: 3 / 4;
-  height: 100%;
-  max-width: 100%;
+  width: min(100cqw, 75cqh);
+  height: auto;
+  flex: none;
   overflow: hidden;
   container-type: inline-size;
   background: #000;
