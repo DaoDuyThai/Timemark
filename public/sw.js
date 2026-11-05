@@ -1,4 +1,4 @@
-const CACHE = "stampnote-v4-logo";
+const CACHE = "timemark-v4-logo";
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/"])).then(() => self.skipWaiting()));

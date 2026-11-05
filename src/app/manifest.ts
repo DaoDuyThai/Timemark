@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "StampNote",
-    short_name: "StampNote",
+    name: "TimeMark",
+    short_name: "TimeMark",
     description: "Đóng dấu ngày giờ, địa điểm và ghi chú lên ảnh",
     start_url: "/",
     display: "standalone",

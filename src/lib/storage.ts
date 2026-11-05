@@ -2,8 +2,8 @@ import { DEFAULT_STAMP, type StampData } from "./stamp";
 
 export type Preset = { id: string; name: string; data: StampData };
 
-const CURRENT_KEY = "stampnote:current";
-const PRESETS_KEY = "stampnote:presets";
+const CURRENT_KEY = "timemark:current";
+const PRESETS_KEY = "timemark:presets";
 
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;

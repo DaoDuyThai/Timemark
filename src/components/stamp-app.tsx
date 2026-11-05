@@ -437,7 +437,7 @@ export function StampApp() {
       const a = document.createElement("a");
       const url = URL.createObjectURL(b);
       a.href = url;
-      a.download = `stampnote-${Date.now()}.jpg`;
+      a.download = `timemark-${Date.now()}.jpg`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -454,7 +454,7 @@ export function StampApp() {
     try {
       const b = await compositionBlob();
       if (!b) throw new Error("empty image");
-      const file = new File([b], `stampnote-${Date.now()}.jpg`, { type: "image/jpeg" });
+      const file = new File([b], `timemark-${Date.now()}.jpg`, { type: "image/jpeg" });
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file] });
       } else {
