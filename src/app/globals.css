@@ -193,6 +193,39 @@ canvas {
   bottom: auto;
 }
 
+.stamp-content-no-note .stamp-address {
+  max-width: 74cqw;
+  margin-bottom: 0;
+}
+
+.stamp-brand-corner {
+  position: absolute;
+  right: 2.5cqw;
+  bottom: 3.05cqw;
+}
+
+.stamp-simple {
+  position: absolute;
+  top: 3cqw;
+  right: 3cqw;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6cqw;
+  max-width: 88cqw;
+  font-family: Arial, sans-serif;
+  font-size: 4cqw;
+  font-weight: 400;
+  line-height: 1.25;
+  text-align: right;
+}
+
+.stamp-simple-address {
+  max-width: 65cqw;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
 .stamp-time-row {
   display: flex;
   align-items: stretch;

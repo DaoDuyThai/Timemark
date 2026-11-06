@@ -95,6 +95,26 @@ function StampOverlay({ data, date }: { data: StampData; date: Date }) {
   const { time, date: dateText, weekday } = formatParts(date);
   const code = data.imageId || `TM${date.getTime().toString(36).toUpperCase()}`;
   const noteSize = data.note.length > 34 ? Math.max(2.6, 4 - (data.note.length - 34) * 0.035) : 4;
+  const hasNote = data.note.trim().length > 0;
+  const brand = (
+    <span className="stamp-brand">
+      <strong><em>Time</em>mark</strong>
+      <small className="text-[24px]">100% Chân thực</small>
+    </span>
+  );
+
+  if (data.mode === "simple") {
+    const pad = (value: number) => String(value).padStart(2, "0");
+    const timestamp = `${date.getDate()} thg ${date.getMonth() + 1}, ${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    return (
+      <div className="stamp-overlay" aria-hidden>
+        <div className="stamp-simple">
+          <div>{timestamp}</div>
+          {data.address.trim() && <div className="stamp-simple-address">{data.address}</div>}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="stamp-overlay" aria-hidden>
@@ -104,7 +124,7 @@ function StampOverlay({ data, date }: { data: StampData; date: Date }) {
         <span className="stamp-id">Timemark Verified</span>
       </div>
 
-      <div className={data.position === "top" ? "stamp-content stamp-content-top" : "stamp-content"}>
+      <div className={`stamp-content${data.position === "top" ? " stamp-content-top" : ""}${hasNote ? "" : " stamp-content-no-note"}`}>
         <div className="stamp-time-row">
           <div className="stamp-time-box">
             <span>{time}</span>
@@ -118,14 +138,14 @@ function StampOverlay({ data, date }: { data: StampData; date: Date }) {
 
         <div className="stamp-address">{data.address}</div>
 
-        <div className="stamp-card">
-          <span className="stamp-note" style={{ fontSize: `${noteSize * 1.08}cqw` }}>{data.note}</span>
-          <span className="stamp-brand">
-            <strong><em>Time</em>mark</strong>
-            <small className="text-[24px]">100% Chân thực</small>
-          </span>
-        </div>
+        {hasNote && (
+          <div className="stamp-card">
+            <span className="stamp-note" style={{ fontSize: `${noteSize * 1.08}cqw` }}>{data.note}</span>
+            {brand}
+          </div>
+        )}
       </div>
+      {!hasNote && <div className="stamp-brand-corner">{brand}</div>}
     </div>
   );
 }
@@ -698,6 +718,19 @@ export function StampApp() {
                   : "Tự lấy khi mở ứng dụng và vẫn có thể sửa tay. Dữ liệu địa chỉ: © OpenStreetMap contributors."}
               </p>
             </div>
+            <div className="grid gap-1.5">
+              <Label>Kiểu hiển thị trên ảnh</Label>
+              <div className="flex gap-2" role="group" aria-label="Kiểu hiển thị trên ảnh">
+                <Button type="button" className="flex-1" variant={data.mode !== "simple" ? "default" : "outline"} aria-pressed={data.mode !== "simple"} onClick={() => set("mode", "full")}>
+                  Đầy đủ
+                </Button>
+                <Button type="button" className="flex-1" variant={data.mode === "simple" ? "default" : "outline"} aria-pressed={data.mode === "simple"} onClick={() => set("mode", "simple")}>
+                  Đơn giản
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Đơn giản: chỉ ngày giờ và địa chỉ ở góc trên phải. Lựa chọn được tự lưu.</p>
+            </div>
+
             <div className="grid gap-1.5">
               <Label htmlFor="note">Ghi chú một dòng</Label>
               <Input

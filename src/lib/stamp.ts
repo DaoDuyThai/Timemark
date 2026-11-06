@@ -9,6 +9,7 @@ export type StampData = {
   imageId: string;
   accent: string;
   position: "bottom" | "top";
+  mode: "full" | "simple";
 };
 
 export const DEFAULT_STAMP: StampData = {
@@ -21,6 +22,7 @@ export const DEFAULT_STAMP: StampData = {
   imageId: "",
   accent: "#ffbf00",
   position: "bottom",
+  mode: "simple",
 };
 
 export const ACCENTS = ["#ffbf00", "#ff7a00", "#39a9ff", "#ef4444", "#a855f7", "#ffffff"];
