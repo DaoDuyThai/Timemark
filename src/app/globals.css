@@ -206,22 +206,25 @@ canvas {
 
 .stamp-simple {
   position: absolute;
-  top: 3cqw;
-  right: 3cqw;
+  top: 4cqw;
+  right: 4cqw;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.6cqw;
-  max-width: 88cqw;
-  font-family: Arial, sans-serif;
-  font-size: 4cqw;
+  gap: 0;
+  max-width: 92cqw;
+  font-family: var(--font-simple), Arial, sans-serif;
+  font-size: 4.4cqw;
   font-weight: 400;
-  line-height: 1.25;
+  line-height: 1.12;
   text-align: right;
+  text-shadow: 0 0.08cqw 0.14cqw rgb(0 0 0 / 65%);
 }
 
+.stamp-simple-time { white-space: nowrap; }
+
 .stamp-simple-address {
-  max-width: 65cqw;
+  max-width: 80cqw;
   white-space: pre-line;
   overflow-wrap: anywhere;
 }

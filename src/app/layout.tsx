@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Roboto_Condensed } from "next/font/google";
+import { Roboto, Roboto_Condensed } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/register-sw";
@@ -8,6 +8,12 @@ const stamp = Roboto_Condensed({
   variable: "--font-stamp",
   subsets: ["latin", "vietnamese"],
   weight: ["300", "400", "500", "600", "700"],
+});
+
+const simple = Roboto({
+  variable: "--font-simple",
+  subsets: ["latin", "vietnamese"],
+  weight: "400",
 });
 
 export const metadata: Metadata = {
@@ -32,7 +38,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="vi" className={`${stamp.variable} h-full dark`}>
+    <html lang="vi" className={`${stamp.variable} ${simple.variable} h-full dark`}>
       <body className="min-h-full bg-black font-sans text-white">
         {children}
         <Toaster position="top-center" />

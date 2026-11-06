@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toCanvas } from "html-to-image";
+import { paintOverlay } from "@/lib/photo-export";
 import {
   ArrowLeft,
   BarChart3,
@@ -105,12 +105,13 @@ function StampOverlay({ data, date }: { data: StampData; date: Date }) {
 
   if (data.mode === "simple") {
     const pad = (value: number) => String(value).padStart(2, "0");
-    const timestamp = `${date.getDate()} thg ${date.getMonth() + 1}, ${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    const timestamp = `${date.getDate()} tháng ${date.getMonth() + 1}, ${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    const addressLines = data.address.split(/[\r\n,]+/).map((line) => line.trim()).filter(Boolean);
     return (
       <div className="stamp-overlay" aria-hidden>
         <div className="stamp-simple">
-          <div>{timestamp}</div>
-          {data.address.trim() && <div className="stamp-simple-address">{data.address}</div>}
+          <div className="stamp-simple-time">{timestamp}</div>
+          {addressLines.length > 0 && <div className="stamp-simple-address">{addressLines.map((line, index) => <div key={index}>{line}</div>)}</div>}
         </div>
       </div>
     );
@@ -170,6 +171,9 @@ export function StampApp() {
   const [facing, setFacing] = useState<"environment" | "user">("environment");
   const [clock, setClock] = useState<Date | null>(null);
   const [capturedAt, setCapturedAt] = useState<Date | null>(null);
+  const [preparedExport, setPreparedExport] = useState<{ image: HTMLImageElement; data: StampData; file: File } | null>(null);
+  const [exportError, setExportError] = useState(false);
+  const [exportAttempt, setExportAttempt] = useState(0);
 
   const locate = useCallback(() => {
     if (!navigator.geolocation) {
@@ -438,33 +442,60 @@ export function StampApp() {
     reader.readAsDataURL(file);
   }
 
-  async function compositionBlob(): Promise<Blob | null> {
-    const node = compositionRef.current;
-    if (!node || !img) return null;
-    const { width } = portraitOutputSize(img.naturalWidth, img.naturalHeight);
-    const canvas = await toCanvas(node, {
-      pixelRatio: width / node.clientWidth,
-      backgroundColor: "#000000",
-      cacheBust: true,
+  useEffect(() => {
+    if (!img || open) return;
+    let cancelled = false;
+    const frame = requestAnimationFrame(() => {
+      void (async () => {
+        try {
+          setExportError(false);
+          const node = compositionRef.current;
+          if (!node || !node.clientWidth) throw new Error("Photo frame is not ready");
+          await img.decode();
+          // Load only fonts used by this overlay; fonts.ready can wait on unrelated faces.
+          const elements = Array.from(node.querySelectorAll<HTMLElement>(".stamp-overlay span, .stamp-simple"));
+          await Promise.all(elements.map((element) => {
+            const style = getComputedStyle(element);
+            return document.fonts.load(`${style.fontWeight} ${style.fontSize} ${style.fontFamily}`, element.textContent || "0123");
+          }));
+          if (cancelled) return;
+          const { width, height } = portraitOutputSize(img.naturalWidth, img.naturalHeight);
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) throw new Error("Canvas is unavailable");
+          drawPortraitCrop(ctx, img, img.naturalWidth, img.naturalHeight, width, height);
+          await paintOverlay(ctx, node, width);
+          const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.94));
+          if (!blob) throw new Error("JPEG encoding failed");
+          if (!cancelled) setPreparedExport({ image: img, data, file: new File([blob], `timemark-${Date.now()}.jpg`, { type: "image/jpeg" }) });
+        } catch {
+          if (!cancelled) setExportError(true);
+        }
+      })();
     });
-    return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.94));
-  }
+    return () => { cancelled = true; cancelAnimationFrame(frame); };
+  }, [img, data, capturedAt, open, exportAttempt]);
+
+  const exportFile = preparedExport?.image === img && preparedExport?.data === data && !open && !exportError
+    ? preparedExport.file
+    : null;
 
   async function download() {
     try {
-      const b = await compositionBlob();
-      if (!b) throw new Error("empty image");
+      if (!exportFile) return;
       const a = document.createElement("a");
-      const url = URL.createObjectURL(b);
+      const url = URL.createObjectURL(exportFile);
       a.href = url;
-      a.download = `timemark-${Date.now()}.jpg`;
+      a.download = exportFile.name;
       document.body.appendChild(a);
       a.click();
       a.remove();
       // Android/PWA cần blob URL còn sống cho tới khi trình quản lý tải xuống
       // nhận xong request; revoke ngay sau click có thể làm mất file.
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      toast.success("Đã lưu ảnh");
+      toast.success("Đã gửi ảnh tới trình tải xuống");
     } catch {
       toast.error("Không xuất được ảnh. Hãy thử lại.");
     }
@@ -472,15 +503,15 @@ export function StampApp() {
 
   async function share() {
     try {
-      const b = await compositionBlob();
-      if (!b) throw new Error("empty image");
-      const file = new File([b], `timemark-${Date.now()}.jpg`, { type: "image/jpeg" });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file] });
+      if (!exportFile) return;
+      // Invoke synchronously from the tap; do not encode/fetch before share on iOS.
+      if (navigator.share && navigator.canShare?.({ files: [exportFile] })) {
+        await navigator.share({ files: [exportFile] });
       } else {
         await download();
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       toast.error("Không chia sẻ được ảnh. Hãy thử lưu ảnh trước.");
     }
   }
@@ -636,15 +667,16 @@ export function StampApp() {
             Chạm vào thẻ trên ảnh để sửa ngày giờ và nội dung
           </p>
           <div className="grid shrink-0 grid-cols-2 gap-2 bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <Button onClick={download} size="lg" className="bg-[#ffbf00] font-semibold text-black hover:bg-[#ffd04a]">
-              <Download /> Lưu ảnh
+            <Button onClick={download} disabled={!exportFile} size="lg" className="bg-[#ffbf00] font-semibold text-black hover:bg-[#ffd04a]">
+              {exportFile ? <Download /> : <LoaderCircle className="animate-spin" />} {exportFile ? "Lưu ảnh" : "Đang chuẩn bị…"}
             </Button>
-            <Button onClick={share} size="lg" variant="secondary">
+            <Button onClick={share} disabled={!exportFile} size="lg" variant="secondary">
               <Share2 /> Chia sẻ
             </Button>
             <Button onClick={retake} variant="outline">
               <Camera /> Chụp lại
             </Button>
+            {exportError && <Button variant="outline" onClick={() => setExportAttempt((attempt) => attempt + 1)}>Thử xuất ảnh lại</Button>}
             <Button onClick={() => setOpen(true)} variant="outline" className="col-span-2">
               <Pencil /> Chỉnh sửa thông tin
             </Button>
