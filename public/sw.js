@@ -1,4 +1,4 @@
-const CACHE = "timemark-v5-native-export";
+const CACHE = "timemark-v6-click-export";
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/"])).then(() => self.skipWaiting()));
